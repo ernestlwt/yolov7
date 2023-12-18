@@ -4,22 +4,15 @@
 
 docker build -f docker/Dockerfile -t yolov7 .
 
-# for inference
-docker build -f docker/inference.Dockerfile -t yolov7:inference .
-
 # sample training 
 
-docker run \
-    --gpus all \
-    --shm-size=64g \
-    -v /home/ernestlwt/data/coco128:/data/coco128 \
-    -v /home/ernestlwt/workspace/github/yolov7/data:/cfg \
-    -v /home/ernestlwt/workspace/github/yolov7/weights:/weights \
-    -v /home/ernestlwt/workspace/github/yolov7/results:/results \
-    yolov7 \
+bash run_docker.sh
+
+cd yolov7
+
 python test.py \
-    --data /cfg/coco128.yaml \
-    --weights /weights/yolov7-w6.pt \
+    --data ./data/coco128.yaml \
+    --weights ./weights/yolov7-w6.pt \
     --img 1080 \
     --batch 16 \
     --iou 0.65 \
@@ -33,20 +26,12 @@ python test.py \
 
 xhost +local:docker
 
-docker run \
-    --gpus all \
-    --shm-size=64g \
-    --privileged \
-    -v /home/ernestlwt/data/coco128:/data/coco128 \
-    -v /home/ernestlwt/workspace/github/yolov7/data:/cfg \
-    -v /home/ernestlwt/workspace/github/yolov7/weights:/weights \
-    -v /home/ernestlwt/workspace/github/yolov7/results:/results \
-    -v /tmp/.X11-unix:/tmp/.X11-unix \
-    -v /dev/video0:/dev/video0 \
-    -e DISPLAY=$DISPLAY \
-    yolov7:inference \
+bash run_docker.sh
+
+cd yolov7
+
 python detect.py \
-    --weights /weights/yolov7-w6.pt \
+    --weights ./weights/yolov7-w6.pt \
     --conf 0.25 \
     --view-img \
     --source 0
@@ -239,7 +224,7 @@ python detect.py --weights yolov7.pt --conf 0.25 --img-size 640 --source inferen
 
 **Pytorch to ONNX with NMS (and inference)** <a href="https://colab.research.google.com/github/WongKinYiu/yolov7/blob/main/tools/YOLOv7onnx.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a>
 ```shell
-python export.py --weights yolov7-tiny.pt --grid --end2end --simplify \
+python export.py --weights weights/yolov7-w6.pt --grid --end2end --simplify \
         --topk-all 100 --iou-thres 0.65 --conf-thres 0.35 --img-size 640 640 --max-wh 640
 ```
 
