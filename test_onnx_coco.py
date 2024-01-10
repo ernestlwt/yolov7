@@ -61,7 +61,7 @@ colors = {name:[random.randint(0, 255) for _ in range(3)] for i,name in enumerat
 images_filename = [f for f in os.listdir(image_folder)]
 results = []
 for image_file in images_filename:
-    image_id = int(Path(image_file).stem)
+    image_id = str(Path(image_file).stem) # done this way to mimic the way this repo outputs results
     img = cv2.imread(os.path.join(image_folder , image_file))
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     image = img.copy()
@@ -85,13 +85,16 @@ for image_file in images_filename:
         box -= np.array(dwdh*2)
         box /= ratio
         box = box.round().astype(np.int32).tolist()
+        x, y = box[0:2]
+        w = box[2] - box[0]
+        h = box[3] - box[1]
         cls_id = int(cls_id)
         score = round(float(score),5)
         name = names[cls_id]
         results.append({
             "image_id": image_id, 
-            "category_id": cls_id, 
-            "bbox":list(map(lambda x : round(float(x), 5), [x0,y0,x1,y1])),
+            "category_id": cls_id + 1, # coco start from 1
+            "bbox": [x, y, w, h],
             "score": score
         })
 with open(output_json, "w") as outfile:
