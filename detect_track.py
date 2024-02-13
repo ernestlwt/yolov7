@@ -1,5 +1,6 @@
 import argparse
 import time
+import json
 from pathlib import Path
 
 import cv2
@@ -71,6 +72,7 @@ def detect(save_img=False):
     old_img_b = 1
 
     t0 = time.time()
+    frames = []
     for path, img, im0s, vid_cap in dataset:
         img = torch.from_numpy(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
@@ -101,6 +103,7 @@ def detect(save_img=False):
             pred = apply_classifier(pred, modelc, img, im0s)
 
         # Process detections
+        boxes = []
         for i, det in enumerate(pred):  # detections per image
             if webcam:  # batch_size >= 1
                 p, s, im0, frame = path[i], '%g: ' % i, im0s[i].copy(), dataset.count
@@ -116,8 +119,13 @@ def detect(save_img=False):
             # det_np = det.detach().cpu().numpy()
             online_targets = tracker.update(det, img.shape, im0.shape)
             for track in online_targets:
-                print(track.tlbr)
-                print(track.track_id)
+                ltrb = [track.tlbr[1], track.tlbr[0], track.tlbr[3], track.tlbr[2]]
+                # print(img.shape)
+                # ltrb = scale_coords(img.shape[2:], [ltrb,], im0.shape).round()[0]
+                boxes.append({
+                    "ltrb": ltrb,
+                    "track_id": track.track_id
+                })
 
             if len(det):
                 # Rescale boxes from img_size to im0 size
@@ -167,6 +175,16 @@ def detect(save_img=False):
                             save_path += '.mp4'
                         vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                     vid_writer.write(im0)
+
+        frames.append({
+            "boxes": boxes
+        })
+
+    # save track output
+    results = {"frames": frames}
+
+    with open("results.json", "w") as f:
+        f.write(json.dumps(results))
 
     if save_txt or save_img:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
