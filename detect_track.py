@@ -6,12 +6,13 @@ from pathlib import Path
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
+import numpy as np
 from numpy import random
 
 from models.experimental import attempt_load
 from utils.datasets import LoadStreams, LoadImages
 from utils.general import check_img_size, check_requirements, check_imshow, non_max_suppression, apply_classifier, \
-    scale_coords, xyxy2xywh, strip_optimizer, set_logging, increment_path
+    scale_coords, clip_coords, xyxy2xywh, strip_optimizer, set_logging, increment_path
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
@@ -116,14 +117,22 @@ def detect(save_img=False):
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             
             # process det to tracker
-            # det_np = det.detach().cpu().numpy()
-            online_targets = tracker.update(det, img.shape, im0.shape)
+            online_targets = tracker.update(det, im0.shape, img.shape[2:])
             for track in online_targets:
-                ltrb = [track.tlbr[1], track.tlbr[0], track.tlbr[3], track.tlbr[2]]
-                # print(img.shape)
-                # ltrb = scale_coords(img.shape[2:], [ltrb,], im0.shape).round()[0]
+                ltrb = track.tlbr
+                gain = min(img.shape[2] / im0.shape[0], img.shape[3] / im0.shape[1])
+                pad = (img.shape[3] - im0.shape[1] * gain) / 2 / gain, (img.shape[2] - im0.shape[0] * gain) / 2 / gain  # wh padding
+                ltrb[0] -= pad[0]
+                ltrb[1] -= pad[1]
+                ltrb[2] -= pad[0]
+                ltrb[3] -= pad[1]
+                ltrb[0] = max(0, ltrb[0])
+                ltrb[1] = max(0, ltrb[1])
+                ltrb[2] = min(im0.shape[1], ltrb[2])
+                ltrb[3] = min(im0.shape[0], ltrb[3])
+                
                 boxes.append({
-                    "ltrb": ltrb,
+                    "ltrb": ltrb.tolist(),
                     "track_id": track.track_id
                 })
 
