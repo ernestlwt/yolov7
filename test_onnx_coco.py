@@ -10,6 +10,8 @@ from PIL import Image
 from pathlib import Path
 from collections import OrderedDict,namedtuple
 
+import torch
+
 cuda = True
 w = "./weights/yolov7-w6.onnx"
 image_folder = "/data/coco128/images/train2017"
@@ -24,7 +26,7 @@ names = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', '
          'hair drier', 'toothbrush']
 output_json = "onnx_results.json"
 
-providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if cuda else ['CPUExecutionProvider']
+providers = ['CUDAExecutionProvider'] if cuda else ['CPUExecutionProvider']
 session = ort.InferenceSession(w, providers=providers)
 
 
@@ -60,6 +62,16 @@ colors = {name:[random.randint(0, 255) for _ in range(3)] for i,name in enumerat
 
 images_filename = [f for f in os.listdir(image_folder)]
 results = []
+
+total_time = 0
+
+
+outname = [i.name for i in session.get_outputs()]
+inname = [i.name for i in session.get_inputs()]
+# warmup
+ort_inputs = {session.get_inputs()[0].name: np.zeros((1,3,640,640), dtype=np.float32)}
+session.run(outname, ort_inputs)
+
 for image_file in images_filename:
     image_id = str(Path(image_file).stem) # done this way to mimic the way this repo outputs results
     img = cv2.imread(os.path.join(image_folder , image_file))
@@ -72,13 +84,15 @@ for image_file in images_filename:
     im = image.astype(np.float32)
     im /= 255
 
-    outname = [i.name for i in session.get_outputs()]
-    inname = [i.name for i in session.get_inputs()]
-
     inp = {inname[0]:im}
 
     # ONNX inference
+    torch.cuda.synchronize()
+    start_t = time.time()
     outputs = session.run(outname, inp)[0]
+    torch.cuda.synchronize()
+    end_t = time.time()
+    total_time += end_t - start_t
 
     for i,(batch_id,x0,y0,x1,y1,cls_id,score) in enumerate(outputs):
         box = np.array([x0,y0,x1,y1])
@@ -97,6 +111,10 @@ for image_file in images_filename:
             "bbox": [x, y, w, h],
             "score": score
         })
+
+print("Total Time taken is {}".format(total_time))
+print("Avg Time taken is {}".format(total_time / 128))
+
 with open(output_json, "w") as outfile:
     json.dump(results, outfile)
 
