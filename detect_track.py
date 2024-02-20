@@ -190,7 +190,22 @@ def detect(save_img=False):
         })
 
     # save track output
-    results = {"frames": frames}
+    print(tracker.tracked_stracks)
+    print(tracker.lost_stracks)
+    print(tracker.removed_stracks)
+
+    def get_max(list_of_tracks, max_track):
+        for t in list_of_tracks:
+            if t.track_id > max_track:
+                max_track = t.track_id
+        return max_track
+    
+    num_tracks = 0
+    num_tracks = get_max(tracker.tracked_stracks, num_tracks)
+    num_tracks = get_max(tracker.lost_stracks, num_tracks)
+    num_tracks = get_max(tracker.removed_stracks, num_tracks)
+
+    results = {"frames": frames, "num_tracks": num_tracks}
 
     with open("results.json", "w") as f:
         f.write(json.dumps(results))
