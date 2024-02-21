@@ -205,10 +205,10 @@ def detect(save_img=False):
     num_tracks = get_max(tracker.lost_stracks, num_tracks)
     num_tracks = get_max(tracker.removed_stracks, num_tracks)
 
-    results = {"frames": frames, "num_tracks": num_tracks}
+    predictions = {"frames": frames, "num_tracks": num_tracks}
 
-    with open("results.json", "w") as f:
-        f.write(json.dumps(results))
+    with open("predictions.json", "w") as f:
+        f.write(json.dumps(predictions))
 
     if save_txt or save_img:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
