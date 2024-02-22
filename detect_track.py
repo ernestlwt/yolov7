@@ -117,7 +117,9 @@ def detect(save_img=False):
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             
             # process det to tracker
-            online_targets = tracker.update(det, im0.shape, img.shape[2:])
+            det_to_tracker = det.cpu().numpy()
+            det_to_tracker = np.delete(det_to_tracker, 5, 1)
+            online_targets = tracker.update(det_to_tracker, im0.shape, img.shape[2:])
             for track in online_targets:
                 ltrb = track.tlbr
                 gain = min(img.shape[2] / im0.shape[0], img.shape[3] / im0.shape[1])
@@ -207,7 +209,7 @@ def detect(save_img=False):
 
     predictions = {"frames": frames, "num_tracks": num_tracks}
 
-    with open("predictions.json", "w") as f:
+    with open(opt.predictions_location, "w") as f:
         f.write(json.dumps(predictions))
 
     if save_txt or save_img:
@@ -243,6 +245,7 @@ if __name__ == '__main__':
     parser.add_argument("--match_thresh", type=float, default=0.9, help="matching threshold for tracking")
     parser.add_argument("--min-box-area", type=float, default=100, help='filter out tiny boxes')
     parser.add_argument("--mot20", dest="mot20", default=False, action="store_true", help="test mot20.")
+    parser.add_argument("--predictions_location", type=str, default="predictions.json", help="to store tracking output")
     opt = parser.parse_args()
     print(opt)
     #check_requirements(exclude=('pycocotools', 'thop'))
